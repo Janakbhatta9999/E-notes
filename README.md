@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# eNotes Nepal
 
-## Getting Started
+Mobile-friendly, bilingual study resource website for NEB Grade 11 and 12.
 
-First, run the development server:
+- Product requirements: [`docs/eNotes_Nepal_PRD.md`](./docs/eNotes_Nepal_PRD.md)
+- Technical plan: [`docs/eNotes_Nepal_TADP.md`](./docs/eNotes_Nepal_TADP.md)
 
-```bash
+## Run locally
+
+```powershell
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Connect Supabase
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Create a Supabase project.
+2. In the Supabase SQL Editor, run the migration files in `supabase/migrations` in filename order.
+   They create the academic and curriculum tables, read-only public Row Level Security policies, the published-resources storage bucket, and initial Science, Management, Grade 11, and Grade 12 records.
+3. Copy `.env.example` to `.env.local` and set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from the Supabase project settings. Legacy anon keys are also accepted, but new projects should use a publishable key.
+4. Restart the Next.js development server.
 
-## Learn More
+The public app uses only the Supabase publishable key, with RLS enabled. Never use a secret key in public code or commit `.env.local`. The curriculum migration adds the 16 Grade 11–12 subjects and stores the supplied topics as private pending-review candidates; it does not publish unverified units or chapters. See the [curriculum seed-data report](./docs/curriculum-seed-report.md) for counts, source limitations, and a query to report the live database state.
 
-To learn more about Next.js, take a look at the following resources:
+If Supabase is not configured, public pages show a setup notice instead of silently substituting sample data. Database query failures are surfaced through the app error state.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Checks
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```powershell
+npm run lint
+npm run build
+```
