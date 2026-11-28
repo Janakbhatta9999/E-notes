@@ -38,7 +38,8 @@ create table if not exists public.curriculum_sources (
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  check (source_url ~ '^https?://')
+  check (source_url ~ '^https?://'),
+  check (verification_status <> 'verified' or checked_at is not null)
 );
 
 create unique index if not exists curriculum_sources_url_uidx
@@ -61,7 +62,8 @@ create table if not exists public.units (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (subject_id, slug),
-  unique (id, subject_id)
+  unique (id, subject_id),
+  check (verification_status <> 'verified' or source_id is not null)
 );
 
 alter table public.chapters
@@ -94,6 +96,17 @@ begin
       references public.units (id, subject_id)
       on delete restrict;
   end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'chapters_verified_hierarchy_check'
+      and conrelid = 'public.chapters'::regclass
+  ) then
+    alter table public.chapters
+      add constraint chapters_verified_hierarchy_check
+      check (verification_status <> 'verified' or (source_id is not null and unit_id is not null));
+  end if;
 end
 $$;
 
@@ -119,7 +132,8 @@ create table if not exists public.curriculum_review_items (
     check (verification_status in ('pending_verification', 'verified', 'rejected')),
   verification_note text not null,
   created_at timestamptz not null default now(),
-  unique (subject_id, candidate_type, candidate_number)
+  unique (subject_id, candidate_type, candidate_number),
+  check (verification_status <> 'verified' or source_id is not null)
 );
 
 create index if not exists curriculum_review_items_subject_status_idx
@@ -149,13 +163,29 @@ alter table public.curriculum_review_items enable row level security;
 alter table public.chapters enable row level security;
 
 grant select on public.units to anon, authenticated;
+grant select on public.curriculum_sources to anon, authenticated;
+
+drop policy if exists "Public can read verified curriculum sources" on public.curriculum_sources;
+create policy "Public can read verified curriculum sources"
+  on public.curriculum_sources for select to anon, authenticated
+  using (verification_status = 'verified');
 
 drop policy if exists "Public can read active chapters" on public.chapters;
+drop policy if exists "Public can read verified active chapters" on public.chapters;
 create policy "Public can read verified active chapters"
   on public.chapters for select to anon, authenticated
   using (
     is_active
     and verification_status in ('verified', 'legacy_unverified')
+    and (
+      verification_status = 'legacy_unverified'
+      or exists (
+        select 1
+        from public.curriculum_sources
+        where curriculum_sources.id = chapters.source_id
+          and curriculum_sources.verification_status = 'verified'
+      )
+    )
     and (
       unit_id is null
       or exists (
@@ -169,6 +199,16 @@ create policy "Public can read verified active chapters"
     )
   );
 
+drop policy if exists "Public can read verified active units" on public.units;
 create policy "Public can read verified active units"
   on public.units for select to anon, authenticated
-  using (is_active and verification_status = 'verified');
+  using (
+    is_active
+    and verification_status = 'verified'
+    and exists (
+      select 1
+      from public.curriculum_sources
+      where curriculum_sources.id = units.source_id
+        and curriculum_sources.verification_status = 'verified'
+    )
+  );

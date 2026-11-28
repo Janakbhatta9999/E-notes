@@ -38,6 +38,9 @@ export function ResourceCard({ resource, locale, academic }: ResourceCardProps) 
   const subject = academic.subjects.find((item) => item.id === resource.subject_id);
   const chapter = academic.chapters.find((item) => item.id === resource.chapter_id);
   const unit = academic.units.find((item) => item.id === chapter?.unit_id);
+  const chapterHref = stream && grade && subject && chapter
+    ? `/${locale}/${stream.slug}/grade-${grade.number}/${subject.slug}/${chapter.slug}`
+    : null;
   const updatedDate = resource.updated_at.slice(0, 10);
 
   return (
@@ -60,8 +63,14 @@ export function ResourceCard({ resource, locale, academic }: ResourceCardProps) 
         </p>
       )}
       {chapter && (
-        <p className="mt-1 text-sm text-muted">
-          {locale === "ne" ? chapter.title_ne || chapter.title_en : chapter.title_en}
+        <p className="mt-1 text-sm">
+          {chapterHref ? (
+            <Link href={chapterHref} className="font-semibold text-science hover:text-science-dark">
+              {locale === "ne" ? chapter.title_ne || chapter.title_en : chapter.title_en}
+            </Link>
+          ) : (
+            <span className="text-muted">{locale === "ne" ? chapter.title_ne || chapter.title_en : chapter.title_en}</span>
+          )}
         </p>
       )}
       {resource.description && <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted">{resource.description}</p>}
